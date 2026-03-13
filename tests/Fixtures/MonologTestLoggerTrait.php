@@ -26,6 +26,9 @@ trait MonologTestLoggerTrait
         $records = $handler->getRecords();
         Assert::assertNotSame([], $records, 'No log records captured.');
 
-        return $records[array_key_last($records)];
+        $lastKey = array_key_last($records);
+        Assert::assertNotNull($lastKey);
+
+        return $records[$lastKey];
     }
 }

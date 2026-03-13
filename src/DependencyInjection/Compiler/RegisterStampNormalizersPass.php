@@ -13,7 +13,6 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Messenger\Stamp\StampInterface;
 
-use function array_unique;
 use function array_values;
 use function is_string;
 
@@ -88,15 +87,14 @@ final class RegisterStampNormalizersPass implements CompilerPassInterface
 
         $this->assertNormalizerClass($class);
 
-        $stampClasses = [];
+        /** @var array<class-string<StampInterface>, class-string<StampInterface>> $uniqueStampClasses */
+        $uniqueStampClasses = [];
 
         foreach ($tags as $tag) {
-            $stampClasses[] = isset($tag['stamp_class'])
+            $stampClass = isset($tag['stamp_class'])
                 ? $tag['stamp_class']
                 : $class::getSupportedStampClass();
-        }
 
-        foreach ($stampClasses as $stampClass) {
             if (!is_string($stampClass)) {
                 throw new InvalidArgumentException(sprintf(
                     'Stamp normalizer service "%s" must declare stamp classes as strings.',
@@ -105,16 +103,13 @@ final class RegisterStampNormalizersPass implements CompilerPassInterface
             }
 
             $this->assertStampClass($stampClass);
-        }
-
-        $uniqueStampClasses = [];
-
-        foreach ($stampClasses as $stampClass) {
             $uniqueStampClasses[$stampClass] = $stampClass;
         }
 
-        /** @var list<class-string<StampInterface>> */
-        return array_values($uniqueStampClasses);
+        /** @var list<class-string<StampInterface>> $supportedStampClasses */
+        $supportedStampClasses = array_values($uniqueStampClasses);
+
+        return $supportedStampClasses;
     }
 
     private function assertStampClass(string $stampClass): void

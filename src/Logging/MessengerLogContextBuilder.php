@@ -17,7 +17,6 @@ use Symfony\Component\Messenger\Stamp\StampInterface;
 use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Uid\Uuid;
-use Symfony\Contracts\Service\ServiceProviderInterface;
 use Throwable;
 use UnitEnum;
 
@@ -35,18 +34,17 @@ use function ksort;
 
 final class MessengerLogContextBuilder
 {
-    /** @var ServiceProviderInterface<StampNormalizerInterface> */
-    private readonly ServiceProviderInterface $stampNormalizers;
+    /** @var ServiceLocator<StampNormalizerInterface> */
+    private readonly ServiceLocator $stampNormalizers;
 
     /**
-     * @param ServiceProviderInterface<StampNormalizerInterface>|null $stampNormalizers
+     * @param ServiceLocator<StampNormalizerInterface>|null $stampNormalizers
      */
     public function __construct(
-        ServiceProviderInterface|null $stampNormalizers = null,
+        ServiceLocator|null $stampNormalizers = null,
     ) {
-        /** @var ServiceProviderInterface<StampNormalizerInterface> $resolvedStampNormalizers */
+        /** @var ServiceLocator<StampNormalizerInterface> $resolvedStampNormalizers */
         $resolvedStampNormalizers = $stampNormalizers ?? new ServiceLocator([]);
-
         $this->stampNormalizers = $resolvedStampNormalizers;
     }
 
@@ -177,12 +175,25 @@ final class MessengerLogContextBuilder
 
     private function stampNormalizer(StampInterface $stamp): StampNormalizerInterface|null
     {
+        /** @var ServiceLocator<mixed> $stampNormalizers */
+        $stampNormalizers = $this->stampNormalizers;
+
         foreach ($this->stampNormalizerCandidates($stamp) as $stampClass) {
-            if (!$this->stampNormalizers->has($stampClass)) {
+            if (!$stampNormalizers->has($stampClass)) {
                 continue;
             }
 
-            return $this->stampNormalizers->get($stampClass);
+            $stampNormalizer = $stampNormalizers->get($stampClass);
+
+            if (!$stampNormalizer instanceof StampNormalizerInterface) {
+                throw new \LogicException(sprintf(
+                    'Stamp normalizer service "%s" must implement "%s".',
+                    $stampClass,
+                    StampNormalizerInterface::class,
+                ));
+            }
+
+            return $stampNormalizer;
         }
 
         return null;
