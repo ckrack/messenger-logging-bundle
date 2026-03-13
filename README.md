@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Messenger Logging Bundle logo" width="240">
+</p>
+
 # Messenger Logging Bundle
 
 Symfony bundle for Messenger lifecycle logging, suitable for monitoring.
