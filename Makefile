@@ -28,11 +28,11 @@ static: ## run static analysis
 
 .PHONY: cs
 cs: ## run php-cs-fixer in check mode
-	@$(dc) run -ePHP_CS_FIXER_IGNORE_ENV=1 --rm --no-deps php vendor/bin/php-cs-fixer check --using-cache=no --show-progress=none
+	@$(dc) run --rm --no-deps php vendor/bin/php-cs-fixer check --allow-unsupported-php-version=yes --using-cache=no --show-progress=none
 
 .PHONY: fix
 fix: ## fix code style
-	@$(dc) run -ePHP_CS_FIXER_IGNORE_ENV=1 --rm --no-deps php vendor/bin/php-cs-fixer fix
+	@$(dc) run --rm --no-deps php vendor/bin/php-cs-fixer fix --allow-unsupported-php-version=yes
 
 .PHONY: check
 check: composer-validate cs static test ## run all local checks
