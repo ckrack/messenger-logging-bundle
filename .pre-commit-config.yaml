@@ -1,0 +1,35 @@
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+repos:
+  - repo: local
+    hooks:
+      - id: composer-validate
+        name: composer validate
+        entry: docker compose run --no-TTY --rm --no-deps php composer validate --strict
+        language: system
+        pass_filenames: false
+
+      - id: php-cs-fixer
+        name: php-cs-fixer
+        entry: docker compose run --no-TTY --rm --no-deps -ePHP_CS_FIXER_IGNORE_ENV=1 php vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.dist.php --path-mode=intersection
+        language: system
+        types_or:
+          - php
+
+      - id: phpstan
+        name: phpstan
+        entry: docker compose run --no-TTY --rm --no-deps php vendor/bin/phpstan analyse -c phpstan.dist.neon --no-progress
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-push
+
+      - id: phpunit
+        name: phpunit
+        entry: docker compose run --no-TTY --rm --no-deps php vendor/bin/phpunit --do-not-cache-result --no-progress
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-push

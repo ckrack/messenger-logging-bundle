@@ -1,0 +1,54 @@
+name: "ci"
+
+on:
+  pull_request: ~
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: PHP ${{ matrix.php-version }} - Composer ${{ matrix.composer-deps }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ["8.2", "8.3", "8.4", "8.5"]
+        composer-deps: [lowest, stable]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          coverage: none
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install dependencies (lowest)
+        if: matrix.composer-deps == 'lowest'
+        run: composer update --prefer-lowest --prefer-stable --no-interaction --no-progress
+
+      - name: Install dependencies (stable)
+        if: matrix.composer-deps == 'stable'
+        run: composer install --no-interaction --no-progress
+
+      - name: PHP CS Fixer
+        run: vendor/bin/php-cs-fixer check --using-cache=no --show-progress=none
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse -c phpstan.dist.neon --no-progress
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit --colors=always --do-not-cache-result

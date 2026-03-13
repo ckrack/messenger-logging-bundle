@@ -1,0 +1,25 @@
+"Docs":
+  - changed-files:
+      - any-glob-to-any-file: "**/*.md"
+
+"Composer":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "composer.json"
+          - "composer.lock"
+
+"No docs":
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - "**/*.php"
+          - all-globs-to-all-files:
+              - "!**/*.md"
+
+"No tests":
+  - all:
+      - changed-files:
+          - any-glob-to-any-file:
+              - "**/*.php"
+          - all-globs-to-all-files:
+              - "!tests/**/*Test.php"

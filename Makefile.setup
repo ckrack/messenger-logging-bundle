@@ -1,0 +1,15 @@
+.PHONY: check-setup-requirements
+check-setup-requirements:
+	@missing=""; \
+	for cmd in docker pre-commit; do \
+		if ! command -v $$cmd >/dev/null 2>&1; then \
+			missing="$$missing $$cmd"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo "Error: Required command(s) missing:$$missing"; \
+		exit 1; \
+	fi
+
+.PHONY: setup
+setup: check-setup-requirements vendor pre-commit-install ## install dependencies and hooks

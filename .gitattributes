@@ -1,0 +1,11 @@
+# Exclude development and test files from export archives.
+/.github/ export-ignore
+/tests/ export-ignore
+.editorconfig export-ignore
+.pre-commit-config.yaml export-ignore
+.php-cs-fixer.dist.php export-ignore
+docker-compose.yml export-ignore
+Makefile export-ignore
+Makefile.setup export-ignore
+phpstan.dist.neon export-ignore
+phpunit.xml export-ignore
