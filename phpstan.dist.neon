@@ -3,3 +3,25 @@ parameters:
     paths:
         - src/
         - tests/
+    ignoreErrors:
+        # Symfony 6.4 TreeBuilder fluent API lacks precise return types for PHPStan
+        -
+            message: '#Cannot call method \w+\(\) on mixed#'
+            path: src/DependencyInjection/Configuration.php
+            reportUnmatched: false
+        -
+            message: '#Cannot call method \w+\(\) on Symfony\\Component\\Config\\Definition\\Builder\\NodeParentInterface\|null#'
+            path: src/DependencyInjection/Configuration.php
+            reportUnmatched: false
+        # WorkerMessageSkipEvent was added in Symfony 7.2; the subscriber is conditionally registered
+        -
+            messages:
+                - '#WorkerMessageSkipEvent#'
+                - '#expects Symfony\\Component\\Messenger\\Envelope, mixed given#'
+            path: src/EventSubscriber/WorkerMessageSkipEventSubscriber.php
+            reportUnmatched: false
+        # CoversClass became repeatable in a later PHPUnit 11.x
+        -
+            message: '#Attribute class PHPUnit\\Framework\\Attributes\\CoversClass is not repeatable#'
+            path: tests/
+            reportUnmatched: false

@@ -91,7 +91,10 @@ final class MessengerLogContextBuilder
     {
         $names = [];
 
-        foreach ($envelope->all(ReceivedStamp::class) as $receivedStamp) {
+        /** @var list<ReceivedStamp> $receivedStamps */
+        $receivedStamps = $envelope->all(ReceivedStamp::class);
+
+        foreach ($receivedStamps as $receivedStamp) {
             $transportName = $receivedStamp->getTransportName();
 
             if (isset($names[$transportName])) {
@@ -111,7 +114,10 @@ final class MessengerLogContextBuilder
     {
         $normalizedStamps = [];
 
-        foreach ($envelope->all() as $stampClass => $stamps) {
+        /** @var array<class-string<StampInterface>, list<StampInterface>> $allStamps */
+        $allStamps = $envelope->all();
+
+        foreach ($allStamps as $stampClass => $stamps) {
             foreach ($stamps as $stamp) {
                 $normalizedStamps[] = [
                     'class' => $stampClass,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace C10k\MessengerLoggingBundle\DependencyInjection;
 
 use Psr\Log\LogLevel;
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
@@ -21,13 +22,14 @@ final class Configuration implements ConfigurationInterface
         LogLevel::DEBUG,
     ];
 
-    /** @return TreeBuilder<'array'> */
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('c10k_messenger_logging');
 
-        $treeBuilder
-            ->getRootNode()
+        /** @var ArrayNodeDefinition $rootNode */
+        $rootNode = $treeBuilder->getRootNode();
+
+        $rootNode
             ->children()
                 ->booleanNode('enabled')
                     ->defaultTrue()
