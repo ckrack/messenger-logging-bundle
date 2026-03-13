@@ -71,6 +71,12 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+                ->arrayNode('stamp_normalizers')
+                    ->useAttributeAsKey('stamp_class')
+                    ->scalarPrototype()
+                        ->cannotBeEmpty()
+                    ->end()
+                ->end()
             ->end()
         ;
 

@@ -5,12 +5,20 @@ declare(strict_types=1);
 namespace C10k\MessengerLoggingBundle\Tests\Logging;
 
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Logging\StampNormalizer\BusNameStampNormalizer;
+use C10k\MessengerLoggingBundle\Logging\StampNormalizer\HandledStampNormalizer;
+use C10k\MessengerLoggingBundle\Logging\StampNormalizer\RedeliveryStampNormalizer;
+use C10k\MessengerLoggingBundle\Logging\StampNormalizerInterface;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStamp;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStampNormalizer;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Stamp\BusNameStamp;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Messenger\Stamp\SentToFailureTransportStamp;
@@ -35,7 +43,12 @@ final class MessengerLogContextBuilderTest extends TestCase
 
     public function testItBuildsStructuredEnvelopeContext(): void
     {
-        $builder = new MessengerLogContextBuilder();
+        $builder = $this->createBuilder(
+            new BusNameStampNormalizer(),
+            new HandledStampNormalizer(),
+            new RedeliveryStampNormalizer(),
+        );
+        $redeliveredAt = new \DateTimeImmutable('2024-02-03T04:05:06+00:00');
         $context = $builder->build(
             new Envelope(
                 new DummyMessage('message-1'),
@@ -44,7 +57,11 @@ final class MessengerLogContextBuilderTest extends TestCase
                     new BusNameStamp('command.bus'),
                     new ReceivedStamp('failed'),
                     new SentToFailureTransportStamp('async'),
-                    new RedeliveryStamp(2),
+                    new RedeliveryStamp(2, $redeliveredAt),
+                    new HandledStamp(
+                        ['result' => 'this should never be logged by default'],
+                        'App\\MessageHandler\\DummyHandler',
+                    ),
                     new TransportMessageIdStamp('transport-id-1'),
                 ],
             ),
@@ -60,15 +77,93 @@ final class MessengerLogContextBuilderTest extends TestCase
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
         $stamps = $context['stamps'];
 
-        self::assertSame(['uuid' => '018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc'], $this->stampContext($stamps, MessageUuidStamp::class));
+        self::assertSame([], $this->stampContext($stamps, MessageUuidStamp::class));
         self::assertSame(
-            ['transport_name' => 'failed'],
+            ['bus_name' => 'command.bus'],
+            $this->stampContext($stamps, BusNameStamp::class),
+        );
+        self::assertSame(
+            [],
             $this->stampContext($stamps, ReceivedStamp::class),
         );
         self::assertSame(
-            ['original_receiver_name' => 'async'],
+            [],
             $this->stampContext($stamps, SentToFailureTransportStamp::class),
         );
+        self::assertSame(
+            ['redelivered_at' => $redeliveredAt->format(\DateTimeInterface::ATOM)],
+            $this->stampContext($stamps, RedeliveryStamp::class),
+        );
+        self::assertSame(
+            ['handler_name' => 'App\\MessageHandler\\DummyHandler'],
+            $this->stampContext($stamps, HandledStamp::class),
+        );
+        self::assertSame([], $this->stampContext($stamps, TransportMessageIdStamp::class));
+    }
+
+    public function testItUsesRegisteredCustomStampNormalizer(): void
+    {
+        $builder = $this->createBuilder(new CustomStampNormalizer());
+
+        $context = $builder->build(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [
+                    new CustomStamp(
+                        'safe',
+                        ['token' => 'secret', 'large' => ['payload' => 'hidden']],
+                    ),
+                ],
+            ),
+        );
+
+        /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
+        $stamps = $context['stamps'];
+
+        self::assertSame(
+            ['safe_value' => 'safe'],
+            $this->stampContext($stamps, CustomStamp::class),
+        );
+    }
+
+    public function testItLeavesUnknownStampsEmptyWhenNoNormalizerExists(): void
+    {
+        $builder = new MessengerLogContextBuilder();
+
+        $context = $builder->build(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [
+                    new CustomStamp(
+                        'safe',
+                        ['token' => 'secret', 'large' => ['payload' => 'visible']],
+                    ),
+                ],
+            ),
+        );
+
+        /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
+        $stamps = $context['stamps'];
+
+        self::assertSame(
+            [],
+            $this->stampContext($stamps, CustomStamp::class),
+        );
+    }
+
+    private function createBuilder(StampNormalizerInterface ...$stampNormalizers): MessengerLogContextBuilder
+    {
+        /** @var array<string, callable(mixed): StampNormalizerInterface> $factories */
+        $factories = [];
+
+        foreach ($stampNormalizers as $stampNormalizer) {
+            $factories[$stampNormalizer::getSupportedStampClass()] = static fn (mixed $locator): StampNormalizerInterface => $stampNormalizer;
+        }
+
+        /** @var ServiceLocator<StampNormalizerInterface> $stampNormalizerLocator */
+        $stampNormalizerLocator = new ServiceLocator($factories);
+
+        return new MessengerLogContextBuilder($stampNormalizerLocator);
     }
 
     /**

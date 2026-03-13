@@ -14,6 +14,7 @@ use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service_locator;
 
 return static function (ContainerConfigurator $container): void {
     $services = $container->services()
@@ -21,7 +22,12 @@ return static function (ContainerConfigurator $container): void {
         ->autowire()
         ->autoconfigure();
 
-    $services->set(MessengerLogContextBuilder::class);
+    $services->set(MessengerLogContextBuilder::class)
+        ->arg('$stampNormalizers', service_locator([]));
+    $services->load(
+        'C10k\\MessengerLoggingBundle\\Logging\\StampNormalizer\\',
+        __DIR__.'/../../Logging/StampNormalizer/*Normalizer.php',
+    );
     $services->set(SendMessageToTransportsEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
         ->arg('$logLevel', param('c10k_messenger_logging.log_levels.queued'));

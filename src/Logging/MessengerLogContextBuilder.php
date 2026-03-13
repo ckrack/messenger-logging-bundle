@@ -7,8 +7,6 @@ namespace C10k\MessengerLoggingBundle\Logging;
 use BackedEnum;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use DateTimeInterface;
-use ReflectionClass;
-use ReflectionMethod;
 use Stringable;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent;
@@ -17,25 +15,41 @@ use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Messenger\Stamp\SentToFailureTransportStamp;
 use Symfony\Component\Messenger\Stamp\StampInterface;
 use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Service\ServiceProviderInterface;
 use Throwable;
 use UnitEnum;
 
 use function array_map;
 use function array_merge;
+use function array_unique;
 use function array_values;
+use function class_implements;
+use function class_parents;
 use function get_debug_type;
 use function is_array;
 use function is_object;
 use function is_scalar;
 use function ksort;
-use function lcfirst;
-use function preg_replace;
-use function str_starts_with;
-use function strtolower;
 
 final class MessengerLogContextBuilder
 {
+    /** @var ServiceProviderInterface<StampNormalizerInterface> */
+    private readonly ServiceProviderInterface $stampNormalizers;
+
+    /**
+     * @param ServiceProviderInterface<StampNormalizerInterface>|null $stampNormalizers
+     */
+    public function __construct(
+        ServiceProviderInterface|null $stampNormalizers = null,
+    ) {
+        /** @var ServiceProviderInterface<StampNormalizerInterface> $resolvedStampNormalizers */
+        $resolvedStampNormalizers = $stampNormalizers ?? new ServiceLocator([]);
+
+        $this->stampNormalizers = $resolvedStampNormalizers;
+    }
+
     public function withUuid(Envelope $envelope): Envelope
     {
         if ($this->uuid($envelope) !== null) {
@@ -134,45 +148,60 @@ final class MessengerLogContextBuilder
      */
     private function normalizeStamp(StampInterface $stamp): array
     {
-        $context = [];
-        $reflectionClass = new ReflectionClass($stamp);
+        $stampNormalizer = $this->stampNormalizer($stamp);
 
-        foreach ($reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->isStatic() || $method->getNumberOfRequiredParameters() !== 0) {
-                continue;
-            }
-
-            $key = $this->contextKey($method->getName());
-
-            if ($key === null) {
-                continue;
-            }
-
-            $context[$key] = $this->normalizeValue($method->invoke($stamp));
+        if ($stampNormalizer === null) {
+            return [];
         }
 
-        ksort($context);
-
-        return $context;
+        return $this->normalizeContext($stampNormalizer->normalize($stamp));
     }
 
-    private function contextKey(string $methodName): string|null
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeContext(array $context): array
     {
-        foreach (['get', 'is', 'has'] as $prefix) {
-            if (!str_starts_with($methodName, $prefix)) {
+        $normalizedContext = [];
+
+        foreach ($context as $key => $value) {
+            $normalizedContext[$key] = $this->normalizeValue($value);
+        }
+
+        ksort($normalizedContext);
+
+        return $normalizedContext;
+    }
+
+    private function stampNormalizer(StampInterface $stamp): StampNormalizerInterface|null
+    {
+        foreach ($this->stampNormalizerCandidates($stamp) as $stampClass) {
+            if (!$this->stampNormalizers->has($stampClass)) {
                 continue;
             }
 
-            $rawName = lcfirst((string) preg_replace('/^'.$prefix.'/', '', $methodName));
-
-            if ($rawName === '') {
-                return null;
-            }
-
-            return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $rawName));
+            return $this->stampNormalizers->get($stampClass);
         }
 
         return null;
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    private function stampNormalizerCandidates(StampInterface $stamp): array
+    {
+        return array_values(
+            array_unique(
+                array_merge(
+                    [$stamp::class],
+                    array_values(class_parents($stamp) ?: []),
+                    array_values(class_implements($stamp) ?: []),
+                ),
+            ),
+        );
     }
 
     private function normalizeValue(mixed $value): mixed

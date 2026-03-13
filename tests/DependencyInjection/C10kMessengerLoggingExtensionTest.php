@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace C10k\MessengerLoggingBundle\Tests\DependencyInjection;
 
+use C10k\MessengerLoggingBundle\C10kMessengerLoggingBundle;
 use C10k\MessengerLoggingBundle\DependencyInjection\Configuration;
 use C10k\MessengerLoggingBundle\DependencyInjection\C10kMessengerLoggingExtension;
 use C10k\MessengerLoggingBundle\EventSubscriber\SendMessageToTransportsEventSubscriber;
@@ -13,11 +14,18 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscr
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageSkipEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\ConfiguredBusNameStampNormalizer;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStamp;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStampNormalizer;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
+use Symfony\Component\Messenger\Stamp\BusNameStamp;
 
+#[CoversClass(C10kMessengerLoggingBundle::class)]
 #[CoversClass(C10kMessengerLoggingExtension::class)]
 #[CoversClass(Configuration::class)]
 final class C10kMessengerLoggingExtensionTest extends TestCase
@@ -33,6 +41,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
         self::assertTrue($container->getParameter('c10k_messenger_logging.enabled'));
         self::assertNull($container->getParameter('c10k_messenger_logging.log_channel'));
         self::assertTrue($container->hasDefinition(MessengerLogContextBuilder::class));
+        self::assertSame([], $container->getParameter('c10k_messenger_logging.stamp_normalizers'));
         self::assertTrue($container->hasDefinition(SendMessageToTransportsEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageReceivedEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageHandledEventSubscriber::class));
@@ -68,6 +77,28 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
         self::assertSame('info', $container->getParameter('c10k_messenger_logging.log_levels.failed'));
     }
 
+    public function testItLoadsCustomStampNormalizerConfiguration(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new C10kMessengerLoggingExtension();
+
+        $extension->load(
+            [
+                [
+                    'stamp_normalizers' => [
+                        'App\\Messenger\\CustomStamp' => 'App\\Messenger\\Logging\\CustomStampNormalizer',
+                    ],
+                ],
+            ],
+            $container,
+        );
+
+        self::assertSame(
+            ['App\\Messenger\\CustomStamp' => 'App\\Messenger\\Logging\\CustomStampNormalizer'],
+            $container->getParameter('c10k_messenger_logging.stamp_normalizers'),
+        );
+    }
+
     public function testItAddsConfiguredLogChannelToAllSubscribers(): void
     {
         $container = new ContainerBuilder();
@@ -83,6 +114,95 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
                 $container->getDefinition($subscriberServiceId)->getTag('monolog.logger'),
             );
         }
+    }
+
+    public function testItDiscoversTaggedStampNormalizers(): void
+    {
+        $container = new ContainerBuilder();
+        $bundle = new C10kMessengerLoggingBundle();
+        $extension = new C10kMessengerLoggingExtension();
+
+        $bundle->build($container);
+        $extension->load([], $container);
+
+        $container
+            ->register(CustomStampNormalizer::class, CustomStampNormalizer::class)
+            ->setAutowired(true)
+            ->setAutoconfigured(true);
+        $container->getDefinition(MessengerLogContextBuilder::class)->setPublic(true);
+        $container->compile();
+
+        $builder = $container->get(MessengerLogContextBuilder::class);
+        self::assertInstanceOf(MessengerLogContextBuilder::class, $builder);
+
+        $context = $builder->build(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [new CustomStamp('safe', ['token' => 'secret'])],
+            ),
+        );
+        /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
+        $stamps = $context['stamps'];
+
+        self::assertSame(
+            ['safe_value' => 'safe'],
+            $this->stampContext($stamps, CustomStamp::class),
+        );
+    }
+
+    public function testConfiguredStampNormalizerMapIsApplied(): void
+    {
+        $container = new ContainerBuilder();
+        $bundle = new C10kMessengerLoggingBundle();
+        $extension = new C10kMessengerLoggingExtension();
+
+        $bundle->build($container);
+        $extension->load(
+            [
+                [
+                    'stamp_normalizers' => [
+                        BusNameStamp::class => ConfiguredBusNameStampNormalizer::class,
+                    ],
+                ],
+            ],
+            $container,
+        );
+
+        $container->getDefinition(MessengerLogContextBuilder::class)->setPublic(true);
+        $container->compile();
+
+        $builder = $container->get(MessengerLogContextBuilder::class);
+        self::assertInstanceOf(MessengerLogContextBuilder::class, $builder);
+
+        $context = $builder->build(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [new BusNameStamp('command.bus')],
+            ),
+        );
+        /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
+        $stamps = $context['stamps'];
+
+        self::assertSame(
+            ['configured_bus_name' => 'configured:command.bus'],
+            $this->stampContext($stamps, BusNameStamp::class),
+        );
+    }
+
+    /**
+     * @param list<array{class: string, context: array<string, mixed>}> $stamps
+     *
+     * @return array<string, mixed>
+     */
+    private function stampContext(array $stamps, string $stampClass): array
+    {
+        foreach ($stamps as $stamp) {
+            if ($stamp['class'] === $stampClass) {
+                return $stamp['context'];
+            }
+        }
+
+        self::fail('Expected stamp not found: '.$stampClass);
     }
 
     /** @return list<class-string> */
