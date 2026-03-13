@@ -37,11 +37,11 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
 
         $extension->load([], $container);
 
-        self::assertTrue($container->hasParameter('c10k_messenger_logging.enabled'));
-        self::assertTrue($container->getParameter('c10k_messenger_logging.enabled'));
-        self::assertNull($container->getParameter('c10k_messenger_logging.log_channel'));
+        self::assertTrue($container->hasParameter('ckrack_messenger_logging.enabled'));
+        self::assertTrue($container->getParameter('ckrack_messenger_logging.enabled'));
+        self::assertNull($container->getParameter('ckrack_messenger_logging.log_channel'));
         self::assertTrue($container->hasDefinition(MessengerLogContextBuilder::class));
-        self::assertSame([], $container->getParameter('c10k_messenger_logging.stamp_normalizers'));
+        self::assertSame([], $container->getParameter('ckrack_messenger_logging.stamp_normalizers'));
         self::assertTrue($container->hasDefinition(SendMessageToTransportsEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageReceivedEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageHandledEventSubscriber::class));
@@ -51,8 +51,8 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
             class_exists(WorkerMessageSkipEvent::class),
             $container->hasDefinition(WorkerMessageSkipEventSubscriber::class),
         );
-        self::assertSame('info', $container->getParameter('c10k_messenger_logging.log_levels.queued'));
-        self::assertSame('error', $container->getParameter('c10k_messenger_logging.log_levels.failed'));
+        self::assertSame('info', $container->getParameter('ckrack_messenger_logging.log_levels.queued'));
+        self::assertSame('error', $container->getParameter('ckrack_messenger_logging.log_levels.failed'));
         self::assertSame([], $container->getDefinition(SendMessageToTransportsEventSubscriber::class)->getTag('monolog.logger'));
     }
 
@@ -63,7 +63,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
 
         $extension->load([['enabled' => false]], $container);
 
-        self::assertFalse($container->getParameter('c10k_messenger_logging.enabled'));
+        self::assertFalse($container->getParameter('ckrack_messenger_logging.enabled'));
     }
 
     public function testItLoadsCustomLogLevels(): void
@@ -73,8 +73,8 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
 
         $extension->load([['log_levels' => ['queued' => 'debug', 'failed' => 'info']]], $container);
 
-        self::assertSame('debug', $container->getParameter('c10k_messenger_logging.log_levels.queued'));
-        self::assertSame('info', $container->getParameter('c10k_messenger_logging.log_levels.failed'));
+        self::assertSame('debug', $container->getParameter('ckrack_messenger_logging.log_levels.queued'));
+        self::assertSame('info', $container->getParameter('ckrack_messenger_logging.log_levels.failed'));
     }
 
     public function testItLoadsCustomStampNormalizerConfiguration(): void
@@ -95,7 +95,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
 
         self::assertSame(
             ['App\\Messenger\\CustomStamp' => 'App\\Messenger\\Logging\\CustomStampNormalizer'],
-            $container->getParameter('c10k_messenger_logging.stamp_normalizers'),
+            $container->getParameter('ckrack_messenger_logging.stamp_normalizers'),
         );
     }
 
@@ -106,7 +106,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
 
         $extension->load([['log_channel' => 'messenger']], $container);
 
-        self::assertSame('messenger', $container->getParameter('c10k_messenger_logging.log_channel'));
+        self::assertSame('messenger', $container->getParameter('ckrack_messenger_logging.log_channel'));
 
         foreach ($this->expectedSubscriberServiceIds() as $subscriberServiceId) {
             self::assertSame(

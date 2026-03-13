@@ -8,7 +8,7 @@ use Symfony\Component\Messenger\Stamp\StampInterface;
 
 interface StampNormalizerInterface
 {
-    public const SERVICE_TAG = 'c10k_messenger_logging.stamp_normalizer';
+    public const SERVICE_TAG = 'ckrack_messenger_logging.stamp_normalizer';
 
     /**
      * @return class-string<StampInterface>

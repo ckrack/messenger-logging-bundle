@@ -26,7 +26,7 @@ final class RegisterStampNormalizersPass implements CompilerPassInterface
         }
 
         /** @var array<class-string<StampInterface>, class-string<StampNormalizerInterface>> $configuredNormalizers */
-        $configuredNormalizers = $container->getParameter('c10k_messenger_logging.stamp_normalizers');
+        $configuredNormalizers = $container->getParameter('ckrack_messenger_logging.stamp_normalizers');
         $normalizers = [];
         $registeredBy = [];
 

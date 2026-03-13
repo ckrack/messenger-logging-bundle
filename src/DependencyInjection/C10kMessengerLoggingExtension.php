@@ -35,13 +35,13 @@ final class C10kMessengerLoggingExtension extends Extension
         $container->registerForAutoconfiguration(StampNormalizerInterface::class)
             ->addTag(StampNormalizerInterface::SERVICE_TAG);
 
-        $container->setParameter('c10k_messenger_logging.enabled', $enabled);
-        $container->setParameter('c10k_messenger_logging.log_channel', $logChannel);
-        $container->setParameter('c10k_messenger_logging.stamp_normalizers', $stampNormalizers);
+        $container->setParameter('ckrack_messenger_logging.enabled', $enabled);
+        $container->setParameter('ckrack_messenger_logging.log_channel', $logChannel);
+        $container->setParameter('ckrack_messenger_logging.stamp_normalizers', $stampNormalizers);
 
         foreach ($logLevels as $event => $logLevel) {
             $container->setParameter(
-                'c10k_messenger_logging.log_levels.'.$event,
+                'ckrack_messenger_logging.log_levels.'.$event,
                 $logLevel,
             );
         }

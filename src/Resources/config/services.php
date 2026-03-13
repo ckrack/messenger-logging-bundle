@@ -30,23 +30,23 @@ return static function (ContainerConfigurator $container): void {
     );
     $services->set(SendMessageToTransportsEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('c10k_messenger_logging.log_levels.queued'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.queued'));
     $services->set(WorkerMessageReceivedEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('c10k_messenger_logging.log_levels.received'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.received'));
     $services->set(WorkerMessageHandledEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('c10k_messenger_logging.log_levels.handled'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.handled'));
     $services->set(WorkerMessageFailedEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('c10k_messenger_logging.log_levels.failed'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.failed'));
     $services->set(WorkerMessageRetriedEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('c10k_messenger_logging.log_levels.retried'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.retried'));
 
     if (class_exists(WorkerMessageSkipEvent::class)) {
         $services->set(WorkerMessageSkipEventSubscriber::class)
             ->arg('$logger', service('logger')->nullOnInvalid())
-            ->arg('$logLevel', param('c10k_messenger_logging.log_levels.skipped'));
+            ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.skipped'));
     }
 };

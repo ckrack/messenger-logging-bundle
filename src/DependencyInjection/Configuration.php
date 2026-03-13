@@ -24,7 +24,7 @@ final class Configuration implements ConfigurationInterface
 
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $treeBuilder = new TreeBuilder('c10k_messenger_logging');
+        $treeBuilder = new TreeBuilder('ckrack_messenger_logging');
 
         /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
