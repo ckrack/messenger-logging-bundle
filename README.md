@@ -1,25 +1,36 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Messenger Logging Bundle logo" width="240">
+</p>
+
 # Messenger Logging Bundle
 
-Symfony bundle for Messenger lifecycle logging, suitable for monitoring.
+Symfony bundle focused on tracking individual Messenger messages end-to-end.
 
-## Overview
+## Why This Bundle Exists
 
-This bundle subscribes to Symfony Messenger lifecycle events and emits
-structured logs that are easy to correlate in monitoring and debugging tools.
+Symfony Messenger's internal logging is useful for worker-level diagnostics,
+but it is not optimized for tracking a single message across queueing, retries,
+failure transport, and final handling.
 
-### What It Adds
+This bundle adds a stable `uuid` to each message and emits structured lifecycle
+logs so one message can be followed reliably in your logging and monitoring
+tools.
+
+### Tracking Capabilities
 
 - A UUIDv7 is assigned when a message is queued.
-- The same UUID is reused across queueing, receiving, handling, failures, and retries.
-- Each log entry includes the message class and a normalized `stamps` array.
-- Transport metadata such as receiver names, retry counts, and failure-transport
-  details are included when available.
+- The same UUID is reused across queueing, receiving, handling, failures,
+  retries, and skips.
+- Each log entry includes key tracking fields such as `message_class`,
+  `retry_count`, receiver/transport names, and failure-transport metadata.
+- Each log entry includes a normalized `stamps` array for additional envelope
+  context.
 
 ### Supported Lifecycle Events
 
-The bundle logs queueing, receiving, success, failure, and retry events. If the
-installed Messenger version supports `WorkerMessageSkipEvent`, skipped messages
-are logged as well.
+The bundle logs queueing, receiving, handled, failed, and retried events. If
+the installed Messenger version supports `WorkerMessageSkipEvent`, skipped
+messages are logged as well.
 
 ## Installation
 
@@ -100,81 +111,43 @@ ckrack_messenger_logging:
     App\Messenger\CustomStamp: App\Messenger\Logging\CustomStampNormalizer
 ```
 
-## Logged Lifecycle
+## Tracked Lifecycle
 
-### Example Message Flow
+### Lifecycle Flow
 
-The example below shows how a single message can appear in the logs when it is
-queued, fails once, is retried, and is eventually handled successfully. The
-same `uuid` is present in every log entry, which makes correlation
-straightforward.
+```mermaid
+flowchart LR
+    queued["queued"] --> received["received"]
+    queued -.-> uuidNote["uuid stamp set here via withUuid() as MessageUuidStamp (UUIDv7)"]
+    received --> handled["handled"]
+    received --> failed["failed"]
+    failed -->|"will_retry = true"| retried["scheduled for retry"]
+    retried --> received
+    received --> skipped["skipped (optional)"]
+    failed -->|"will_retry = false"| failureTransport["failure transport (optional)"]
+```
 
-<table>
-  <thead>
-    <tr>
-      <th>event</th>
-      <th>context</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>message queued</code></td>
-      <td><pre>uuid:          018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class: App\Message\SyncInvoice
-sender_names:  ["async"]
-retry_count:   0</pre></td>
-    </tr>
-    <tr>
-      <td><code>message received (attempt 1)</code></td>
-      <td><pre>uuid:                     018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class:            App\Message\SyncInvoice
-receiver_name:            async
-received_transport_names: ["async"]
-retry_count:              0</pre></td>
-    </tr>
-    <tr>
-      <td><code>message failed (will retry)</code></td>
-      <td><pre>uuid:                     018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class:            App\Message\SyncInvoice
-receiver_name:            async
-received_transport_names: ["async"]
-retry_count:              0
-will_retry:               true
-exception_class:          RuntimeException
-exception_message:        Temporary upstream timeout</pre></td>
-    </tr>
-    <tr>
-      <td><code>message scheduled for retry</code></td>
-      <td><pre>uuid:          018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class: App\Message\SyncInvoice
-receiver_name: async
-retry_count:   1</pre></td>
-    </tr>
-    <tr>
-      <td><code>message received (attempt 2)</code></td>
-      <td><pre>uuid:                     018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class:            App\Message\SyncInvoice
-receiver_name:            async
-received_transport_names: ["async"]
-retry_count:              1</pre></td>
-    </tr>
-    <tr>
-      <td><code>message handled</code></td>
-      <td><pre>uuid:                     018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc
-message_class:            App\Message\SyncInvoice
-receiver_name:            async
-received_transport_names: ["async"]
-retry_count:              1</pre></td>
-    </tr>
-  </tbody>
-</table>
+### Field Presence By Log Event
 
-### Additional Context Fields
+`skipped` is only logged when `WorkerMessageSkipEvent` is available in the
+installed Messenger version.
 
-Each entry also contains the normalized `stamps` array. Depending on the
-envelope state, the bundle may also include fields such as
-`transport_message_id`, `from_failed_transport`, and
-`failed_transport_original_receiver_name`.
+| field | queued | received | handled | failed | retried | skipped |
+| --- | --- | --- | --- | --- | --- | --- |
+| `uuid (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `message_class (class-string)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `retry_count (int)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `received_transport_names (list<string>)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `from_failed_transport (bool)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `failed_transport_original_receiver_name (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `transport_message_id (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `stamps (list<array{class: class-string, context: array<string, mixed>}>)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `sender_names (list<string>)` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `receiver_name (string)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `will_retry (bool)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `exception_class (class-string<Throwable>)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `exception_message (string)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `exception_code (int)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 ## Local development
 
