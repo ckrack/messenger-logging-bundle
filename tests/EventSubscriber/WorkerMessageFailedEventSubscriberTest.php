@@ -8,7 +8,8 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageFailedEventSubscrib
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
-use C10k\MessengerLoggingBundle\Tests\Fixtures\InMemoryLogger;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\MonologTestLoggerTrait;
+use Monolog\Level;
 use Psr\Log\LogLevel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -20,9 +21,11 @@ use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 #[CoversClass(WorkerMessageFailedEventSubscriber::class)]
 final class WorkerMessageFailedEventSubscriberTest extends TestCase
 {
+    use MonologTestLoggerTrait;
+
     public function testItLogsFailuresIncludingRetryInformation(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new WorkerMessageFailedEventSubscriber(new MessengerLogContextBuilder(), $logger);
         $event = new WorkerMessageFailedEvent(
             new Envelope(
@@ -40,18 +43,20 @@ final class WorkerMessageFailedEventSubscriberTest extends TestCase
 
         $subscriber->onFailed($event);
 
-        self::assertSame('Messenger message failed.', $logger->lastRecord()['message']);
-        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $logger->lastRecord()['context']['uuid']);
-        self::assertSame('async', $logger->lastRecord()['context']['receiver_name']);
-        self::assertSame(1, $logger->lastRecord()['context']['retry_count']);
-        self::assertTrue($logger->lastRecord()['context']['will_retry']);
-        self::assertSame(\RuntimeException::class, $logger->lastRecord()['context']['exception_class']);
-        self::assertSame('boom', $logger->lastRecord()['context']['exception_message']);
+        $record = $this->lastRecord($handler);
+
+        self::assertSame('Messenger message failed.', $record->message);
+        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
+        self::assertSame('async', $record->context['receiver_name']);
+        self::assertSame(1, $record->context['retry_count']);
+        self::assertTrue($record->context['will_retry']);
+        self::assertSame(\RuntimeException::class, $record->context['exception_class']);
+        self::assertSame('boom', $record->context['exception_message']);
     }
 
     public function testItUsesConfiguredLogLevelForFailures(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new WorkerMessageFailedEventSubscriber(
             new MessengerLogContextBuilder(),
             $logger,
@@ -65,6 +70,6 @@ final class WorkerMessageFailedEventSubscriberTest extends TestCase
 
         $subscriber->onFailed($event);
 
-        self::assertSame(LogLevel::INFO, $logger->lastRecord()['level']);
+        self::assertSame(Level::Info, $this->lastRecord($handler)->level);
     }
 }

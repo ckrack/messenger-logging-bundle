@@ -8,7 +8,8 @@ use C10k\MessengerLoggingBundle\EventSubscriber\SendMessageToTransportsEventSubs
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
-use C10k\MessengerLoggingBundle\Tests\Fixtures\InMemoryLogger;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\MonologTestLoggerTrait;
+use Monolog\Level;
 use Psr\Log\LogLevel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -20,9 +21,11 @@ use Symfony\Component\Uid\UuidV7;
 #[CoversClass(SendMessageToTransportsEventSubscriber::class)]
 final class SendMessageToTransportsEventSubscriberTest extends TestCase
 {
+    use MonologTestLoggerTrait;
+
     public function testItAssignsAUuidStampAndLogsQueueing(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new SendMessageToTransportsEventSubscriber(new MessengerLogContextBuilder(), $logger);
         $event = new SendMessageToTransportsEvent(
             new Envelope(new DummyMessage('message-1')),
@@ -37,20 +40,21 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
         $subscriber->onQueued($event);
 
         $uuidStamp = $event->getEnvelope()->last(MessageUuidStamp::class);
+        $record = $this->lastRecord($handler);
 
         self::assertInstanceOf(MessageUuidStamp::class, $uuidStamp);
         self::assertSame(
             $uuidStamp->getUuid(),
             UuidV7::fromString($uuidStamp->getUuid())->toRfc4122(),
         );
-        self::assertSame('Messenger message queued.', $logger->lastRecord()['message']);
-        self::assertSame($uuidStamp->getUuid(), $logger->lastRecord()['context']['uuid']);
-        self::assertSame(['async'], $logger->lastRecord()['context']['sender_names']);
+        self::assertSame('Messenger message queued.', $record->message);
+        self::assertSame($uuidStamp->getUuid(), $record->context['uuid']);
+        self::assertSame(['async'], $record->context['sender_names']);
     }
 
     public function testItUsesConfiguredLogLevelForQueueing(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new SendMessageToTransportsEventSubscriber(
             new MessengerLogContextBuilder(),
             $logger,
@@ -68,6 +72,6 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
 
         $subscriber->onQueued($event);
 
-        self::assertSame(LogLevel::DEBUG, $logger->lastRecord()['level']);
+        self::assertSame(Level::Debug, $this->lastRecord($handler)->level);
     }
 }

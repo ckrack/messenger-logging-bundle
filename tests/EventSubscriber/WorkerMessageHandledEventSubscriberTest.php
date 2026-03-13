@@ -8,7 +8,7 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageHandledEventSubscri
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
-use C10k\MessengerLoggingBundle\Tests\Fixtures\InMemoryLogger;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\MonologTestLoggerTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
@@ -18,9 +18,11 @@ use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 #[CoversClass(WorkerMessageHandledEventSubscriber::class)]
 final class WorkerMessageHandledEventSubscriberTest extends TestCase
 {
+    use MonologTestLoggerTrait;
+
     public function testItLogsHandledMessages(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new WorkerMessageHandledEventSubscriber(new MessengerLogContextBuilder(), $logger);
 
         $subscriber->onHandled(
@@ -36,8 +38,10 @@ final class WorkerMessageHandledEventSubscriberTest extends TestCase
             ),
         );
 
-        self::assertSame('Messenger message handled.', $logger->lastRecord()['message']);
-        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $logger->lastRecord()['context']['uuid']);
-        self::assertSame('async', $logger->lastRecord()['context']['receiver_name']);
+        $record = $this->lastRecord($handler);
+
+        self::assertSame('Messenger message handled.', $record->message);
+        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
+        self::assertSame('async', $record->context['receiver_name']);
     }
 }

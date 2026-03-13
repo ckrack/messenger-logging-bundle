@@ -8,7 +8,7 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscr
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
-use C10k\MessengerLoggingBundle\Tests\Fixtures\InMemoryLogger;
+use C10k\MessengerLoggingBundle\Tests\Fixtures\MonologTestLoggerTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
@@ -19,9 +19,11 @@ use Symfony\Component\Messenger\Stamp\SentToFailureTransportStamp;
 #[CoversClass(WorkerMessageReceivedEventSubscriber::class)]
 final class WorkerMessageReceivedEventSubscriberTest extends TestCase
 {
+    use MonologTestLoggerTrait;
+
     public function testItLogsReceiveFromFailedQueueWithOriginInformation(): void
     {
-        $logger = new InMemoryLogger();
+        [$logger, $handler] = $this->createTestLogger();
         $subscriber = new WorkerMessageReceivedEventSubscriber(new MessengerLogContextBuilder(), $logger);
         $event = new WorkerMessageReceivedEvent(
             new Envelope(
@@ -37,13 +39,15 @@ final class WorkerMessageReceivedEventSubscriberTest extends TestCase
 
         $subscriber->onReceived($event);
 
-        self::assertSame('Messenger message received.', $logger->lastRecord()['message']);
-        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $logger->lastRecord()['context']['uuid']);
-        self::assertSame('failed', $logger->lastRecord()['context']['receiver_name']);
-        self::assertTrue($logger->lastRecord()['context']['from_failed_transport']);
+        $record = $this->lastRecord($handler);
+
+        self::assertSame('Messenger message received.', $record->message);
+        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
+        self::assertSame('failed', $record->context['receiver_name']);
+        self::assertTrue($record->context['from_failed_transport']);
         self::assertSame(
             'async',
-            $logger->lastRecord()['context']['failed_transport_original_receiver_name'],
+            $record->context['failed_transport_original_receiver_name'],
         );
     }
 }
