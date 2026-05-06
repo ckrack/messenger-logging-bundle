@@ -32,6 +32,25 @@ The bundle logs queueing, receiving, handled, failed, and retried events. If
 the installed Messenger version supports `WorkerMessageSkipEvent`, skipped
 messages are logged as well.
 
+Symfony Messenger dispatches the following events in the supported versions of
+this bundle (`6.4`, `7.4`, `8.0`). The table also maps what this bundle does
+for each event.
+
+| Symfony Messenger event | Meaning | Availability in supported Symfony versions | Our usage in this bundle |
+| --- | --- | --- | --- |
+| `SendMessageToTransportsEvent` | Dispatched before a message is sent to one or more transports. | `6.4`, `7.4`, `8.0` | Yes: `SendMessageToTransportsEventSubscriber` adds/reuses UUID, logs `Messenger message queued.`, includes `sender_names` (`log_levels.queued`). |
+| `MessageSentToTransportsEvent` | Dispatched after a message has been sent to at least one transport (once even if multiple transports are used). | `7.4`, `8.0` | No: not used currently. |
+| `WorkerMessageReceivedEvent` | Dispatched when a worker receives a message from a transport, before handling. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageReceivedEventSubscriber` ensures UUID and logs `Messenger message received.` with `receiver_name` (`log_levels.received`). |
+| `WorkerMessageHandledEvent` | Dispatched after a worker successfully handles a message. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageHandledEventSubscriber` ensures UUID and logs `Messenger message handled.` with `receiver_name` (`log_levels.handled`). |
+| `WorkerMessageFailedEvent` | Dispatched when message handling fails. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageFailedEventSubscriber` ensures UUID and logs `Messenger message failed.` with `receiver_name`, `will_retry`, and exception fields (`log_levels.failed`). |
+| `WorkerMessageRetriedEvent` | Dispatched when a failed message is scheduled to be retried. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageRetriedEventSubscriber` ensures UUID and logs `Messenger message scheduled for retry.` with `receiver_name` (`log_levels.retried`). |
+| `WorkerRateLimitedEvent` | Dispatched when the worker is rate-limited and must wait before consuming. | `6.4`, `7.4`, `8.0` | No: not used currently. |
+| `WorkerRunningEvent` | Dispatched after each worker loop iteration (message processed or idle). | `6.4`, `7.4`, `8.0` | No: not used currently. |
+| `WorkerStartedEvent` | Dispatched when a worker starts running. | `6.4`, `7.4`, `8.0` | No: not used currently. |
+| `WorkerStoppedEvent` | Dispatched when a worker stops. | `6.4`, `7.4`, `8.0` | No: not used currently. |
+| `WorkerMessageSkipEvent` | Dispatched when a failed message is explicitly skipped in `messenger:failed:retry`. | `7.4`, `8.0` | Yes: `WorkerMessageSkipEventSubscriber` is conditionally registered (`class_exists`) and logs `Messenger message skipped.` with `receiver_name` (`log_levels.skipped`). |
+
+
 ## Installation
 
 ### Package Installation
