@@ -22,6 +22,8 @@ tools.
 - Stable UUID reuse across queueing, receiving, handling, failures, retries.
 - Structured log context with lifecycle fields, transport metadata, and
   normalized Messenger stamps.
+- Queue latency and handler runtime fields for graphing delivery and
+  processing duration.
 
 ## Installation
 
@@ -142,6 +144,8 @@ array{
     // Event-specific fields.
     sender_names?: list<string>,               // queued only
     receiver_name?: string,                    // received, handled, failed, retried
+    time_in_queue_ms?: int|null,               // received only
+    handling_duration_ms?: int|null,           // handled, failed
     will_retry?: bool,                         // failed only
     exception_class?: class-string<Throwable>, // failed only
     exception_message?: string,                // failed only
@@ -173,10 +177,40 @@ Example `failed` log context:
   ],
   "receiver_name": "async",
   "will_retry": true,
+  "handling_duration_ms": 875,
   "exception_class": "RuntimeException",
   "exception_message": "Payment provider timed out.",
   "exception_code": "0"
 }
+```
+
+### Duration Fields
+
+`time_in_queue_ms` is logged on `received` events. It is derived from the
+message UUIDv7 timestamp and represents the total age since the first dispatch.
+On retries, this means attempt N reports how stale the message is overall, not
+only the delay since the latest redelivery. `retry_count` can be used to split
+first attempts from retries.
+
+`handling_duration_ms` is logged on `handled` and `failed` events. It is
+tracked in memory from the worker's `received` event until the matching
+`handled` or `failed` event. The value is `null` if the worker did not observe
+the matching receive, for example after a process restart.
+
+Both fields are integer milliseconds and become `null` when they cannot be
+derived, which keeps Elasticsearch and Loki field types stable. Queue latency
+uses the producer's UUID timestamp and the worker clock. If producer and worker
+hosts have clock skew, negative differences are clamped to `0`. For accurate
+queue latency, producers should keep the bundle's UUID stamp at dispatch time
+and serializers must preserve that stamp.
+
+Example p95 handler runtime query in Loki:
+
+```promql
+quantile_over_time(
+  0.95,
+  {channel="messenger"} | json | unwrap handling_duration_ms [5m]
+) by (message_class)
 ```
 
 ## Stamp Normalization

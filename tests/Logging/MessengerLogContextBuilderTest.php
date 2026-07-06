@@ -16,6 +16,7 @@ use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStampNormalizer;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Stamp\BusNameStamp;
@@ -32,7 +33,7 @@ final class MessengerLogContextBuilderTest extends TestCase
 {
     public function testItAddsUuidVersionSevenStampWhenMissing(): void
     {
-        $builder = new MessengerLogContextBuilder();
+        $builder = new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC'));
         $envelope = $builder->withUuid(new Envelope(new DummyMessage('message-1')));
         $uuidStamp = $envelope->last(MessageUuidStamp::class);
 
@@ -106,6 +107,20 @@ final class MessengerLogContextBuilderTest extends TestCase
         self::assertSame([], $this->stampContext($stamps, TransportMessageIdStamp::class));
     }
 
+    public function testItCalculatesQueueLatencyFromUuidVersionSeven(): void
+    {
+        $builder = new MessengerLogContextBuilder(
+            clock: new MockClock('2024-04-23 17:41:33.936 UTC'),
+        );
+
+        self::assertSame(
+            1234,
+            $builder->queueLatencyMs('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc'),
+        );
+        self::assertNull($builder->queueLatencyMs('018f0c0c-6f9e-4eec-bfc3-6f8d3426f5dc'));
+        self::assertNull($builder->queueLatencyMs('not-a-uuid'));
+    }
+
     public function testItUsesRegisteredCustomStampNormalizer(): void
     {
         $builder = $this->createBuilder(new CustomStampNormalizer());
@@ -134,7 +149,7 @@ final class MessengerLogContextBuilderTest extends TestCase
 
     public function testItLeavesUnknownStampsEmptyWhenNoNormalizerExists(): void
     {
-        $builder = new MessengerLogContextBuilder();
+        $builder = new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC'));
 
         $context = $builder->build(
             new Envelope(
@@ -170,7 +185,10 @@ final class MessengerLogContextBuilderTest extends TestCase
         /** @var ServiceLocator<StampNormalizerInterface> $stampNormalizerLocator */
         $stampNormalizerLocator = new ServiceLocator($factories);
 
-        return new MessengerLogContextBuilder($stampNormalizerLocator);
+        return new MessengerLogContextBuilder(
+            new MockClock('2024-04-23 17:41:32 UTC'),
+            $stampNormalizerLocator,
+        );
     }
 
     /**

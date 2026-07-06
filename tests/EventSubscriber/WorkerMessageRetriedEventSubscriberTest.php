@@ -11,6 +11,7 @@ use C10k\MessengerLoggingBundle\Tests\Fixtures\DummyMessage;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\MonologTestLoggerTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\WorkerMessageRetriedEvent;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
@@ -24,7 +25,10 @@ final class WorkerMessageRetriedEventSubscriberTest extends TestCase
     public function testItLogsRetriedMessages(): void
     {
         [$logger, $handler] = $this->createTestLogger();
-        $subscriber = new WorkerMessageRetriedEventSubscriber(new MessengerLogContextBuilder(), $logger);
+        $subscriber = new WorkerMessageRetriedEventSubscriber(
+            new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC')),
+            $logger,
+        );
 
         $subscriber->onRetried(
             new WorkerMessageRetriedEvent(

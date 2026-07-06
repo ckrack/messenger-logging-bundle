@@ -13,6 +13,7 @@ use Monolog\Level;
 use Psr\Log\LogLevel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\MessageSentToTransportsEvent;
 use Symfony\Component\Messenger\Event\SendMessageToTransportsEvent;
@@ -27,7 +28,10 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
     public function testItAssignsAUuidStampBeforeSending(): void
     {
         [$logger, $handler] = $this->createTestLogger();
-        $subscriber = new SendMessageToTransportsEventSubscriber(new MessengerLogContextBuilder(), $logger);
+        $subscriber = new SendMessageToTransportsEventSubscriber(
+            new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC')),
+            $logger,
+        );
         $event = new SendMessageToTransportsEvent(
             new Envelope(new DummyMessage('message-1')),
             ['async' => new class () implements SenderInterface {
@@ -53,7 +57,10 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
     public function testItLogsQueueingAfterSending(): void
     {
         [$logger, $handler] = $this->createTestLogger();
-        $subscriber = new SendMessageToTransportsEventSubscriber(new MessengerLogContextBuilder(), $logger);
+        $subscriber = new SendMessageToTransportsEventSubscriber(
+            new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC')),
+            $logger,
+        );
         $event = new MessageSentToTransportsEvent(
             new Envelope(
                 new DummyMessage('message-1'),
@@ -81,7 +88,7 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
     {
         [$logger, $handler] = $this->createTestLogger();
         $subscriber = new SendMessageToTransportsEventSubscriber(
-            new MessengerLogContextBuilder(),
+            new MessengerLogContextBuilder(new MockClock('2024-04-23 17:41:32 UTC')),
             $logger,
             LogLevel::DEBUG,
         );

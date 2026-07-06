@@ -6,6 +6,7 @@ namespace C10k\MessengerLoggingBundle\EventSubscriber;
 
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
+use C10k\MessengerLoggingBundle\Logging\ProcessingDurationTracker;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -15,6 +16,7 @@ final class WorkerMessageFailedEventSubscriber implements EventSubscriberInterfa
 {
     public function __construct(
         private readonly MessengerLogContextBuilder $contextBuilder,
+        private readonly ProcessingDurationTracker $processingDurationTracker,
         private readonly LoggerInterface|null $logger = null,
         private readonly string $logLevel = LogLevel::ERROR,
     ) {
@@ -23,6 +25,7 @@ final class WorkerMessageFailedEventSubscriber implements EventSubscriberInterfa
     public function onFailed(WorkerMessageFailedEvent $event): void
     {
         $this->contextBuilder->ensureUuidOnWorkerEvent($event);
+        $uuid = $this->contextBuilder->uuid($event->getEnvelope());
 
         $throwable = $event->getThrowable();
 
@@ -35,6 +38,7 @@ final class WorkerMessageFailedEventSubscriber implements EventSubscriberInterfa
                 [
                     'receiver_name' => $event->getReceiverName(),
                     'will_retry' => $event->willRetry(),
+                    'handling_duration_ms' => $uuid !== null ? $this->processingDurationTracker->stopMs($uuid) : null,
                     'exception_class' => $throwable::class,
                     'exception_message' => $throwable->getMessage(),
                     'exception_code' => (string) $throwable->getCode(),

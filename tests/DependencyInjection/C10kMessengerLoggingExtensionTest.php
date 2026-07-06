@@ -14,6 +14,7 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscr
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
+use C10k\MessengerLoggingBundle\Logging\ProcessingDurationTracker;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\ConfiguredBusNameStampNormalizer;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStampNormalizer;
@@ -40,6 +41,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
         self::assertTrue($container->getParameter('ckrack_messenger_logging.enabled'));
         self::assertNull($container->getParameter('ckrack_messenger_logging.log_channel'));
         self::assertTrue($container->hasDefinition(MessengerLogContextBuilder::class));
+        self::assertTrue($container->hasDefinition(ProcessingDurationTracker::class));
         self::assertSame([], $container->getParameter('ckrack_messenger_logging.stamp_normalizers'));
         self::assertTrue($container->hasDefinition(SendMessageToTransportsEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageReceivedEventSubscriber::class));

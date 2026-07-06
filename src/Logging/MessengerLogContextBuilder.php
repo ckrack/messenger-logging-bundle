@@ -7,7 +7,9 @@ namespace C10k\MessengerLoggingBundle\Logging;
 use BackedEnum;
 use C10k\MessengerLoggingBundle\Stamp\MessageUuidStamp;
 use DateTimeInterface;
+use Psr\Clock\ClockInterface;
 use Stringable;
+use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\AbstractWorkerMessageEvent;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
@@ -15,8 +17,8 @@ use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Messenger\Stamp\SentToFailureTransportStamp;
 use Symfony\Component\Messenger\Stamp\StampInterface;
 use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
-use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Uid\UuidV7;
 use Throwable;
 use UnitEnum;
 
@@ -31,6 +33,7 @@ use function is_array;
 use function is_object;
 use function is_scalar;
 use function ksort;
+use function max;
 
 final class MessengerLogContextBuilder
 {
@@ -41,6 +44,7 @@ final class MessengerLogContextBuilder
      * @param ServiceLocator<StampNormalizerInterface>|null $stampNormalizers
      */
     public function __construct(
+        private readonly ClockInterface $clock,
         ServiceLocator|null $stampNormalizers = null,
     ) {
         /** @var ServiceLocator<StampNormalizerInterface> $resolvedStampNormalizers */
@@ -54,7 +58,7 @@ final class MessengerLogContextBuilder
             return $envelope;
         }
 
-        return $envelope->with(new MessageUuidStamp(Uuid::v7()->toRfc4122()));
+        return $envelope->with(new MessageUuidStamp(UuidV7::generate($this->clock->now())));
     }
 
     public function ensureUuidOnWorkerEvent(AbstractWorkerMessageEvent $event): void
@@ -63,7 +67,7 @@ final class MessengerLogContextBuilder
             return;
         }
 
-        $event->addStamps(new MessageUuidStamp(Uuid::v7()->toRfc4122()));
+        $event->addStamps(new MessageUuidStamp(UuidV7::generate($this->clock->now())));
     }
 
     /**
@@ -92,9 +96,32 @@ final class MessengerLogContextBuilder
         );
     }
 
-    private function uuid(Envelope $envelope): string|null
+    public function uuid(Envelope $envelope): string|null
     {
         return $envelope->last(MessageUuidStamp::class)?->getUuid();
+    }
+
+    public function queueLatencyMs(string $uuid): int|null
+    {
+        try {
+            $messageUuid = Uuid::fromString($uuid);
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+
+        if (!$messageUuid instanceof UuidV7) {
+            return null;
+        }
+
+        return max(
+            0,
+            $this->milliseconds($this->clock->now()) - $this->milliseconds($messageUuid->getDateTime()),
+        );
+    }
+
+    private function milliseconds(DateTimeInterface $dateTime): int
+    {
+        return (int) $dateTime->format('Uv');
     }
 
     private function transportMessageId(TransportMessageIdStamp|null $stamp): string|null
