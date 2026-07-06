@@ -22,11 +22,12 @@ final class Configuration implements ConfigurationInterface
         LogLevel::DEBUG,
     ];
 
+    /** @return TreeBuilder<'array'> */
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('ckrack_messenger_logging');
 
-        /** @var ArrayNodeDefinition $rootNode */
+        /** @var ArrayNodeDefinition<TreeBuilder<'array'>> $rootNode */
         $rootNode = $treeBuilder->getRootNode();
 
         $rootNode
