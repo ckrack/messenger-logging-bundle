@@ -12,7 +12,6 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageFailedEventSubscrib
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageHandledEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
-use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageSkipEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\ConfiguredBusNameStampNormalizer;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStamp;
@@ -22,7 +21,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
 use Symfony\Component\Messenger\Stamp\BusNameStamp;
 
 #[CoversClass(C10kMessengerLoggingBundle::class)]
@@ -47,10 +45,6 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
         self::assertTrue($container->hasDefinition(WorkerMessageHandledEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageFailedEventSubscriber::class));
         self::assertTrue($container->hasDefinition(WorkerMessageRetriedEventSubscriber::class));
-        self::assertSame(
-            class_exists(WorkerMessageSkipEvent::class),
-            $container->hasDefinition(WorkerMessageSkipEventSubscriber::class),
-        );
         self::assertSame('info', $container->getParameter('ckrack_messenger_logging.log_levels.queued'));
         self::assertSame('error', $container->getParameter('ckrack_messenger_logging.log_levels.failed'));
         self::assertSame([], $container->getDefinition(SendMessageToTransportsEventSubscriber::class)->getTag('monolog.logger'));
@@ -208,18 +202,12 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
     /** @return list<class-string> */
     private function expectedSubscriberServiceIds(): array
     {
-        $subscriberServiceIds = [
+        return [
             SendMessageToTransportsEventSubscriber::class,
             WorkerMessageReceivedEventSubscriber::class,
             WorkerMessageHandledEventSubscriber::class,
             WorkerMessageFailedEventSubscriber::class,
             WorkerMessageRetriedEventSubscriber::class,
         ];
-
-        if (class_exists(WorkerMessageSkipEvent::class)) {
-            $subscriberServiceIds[] = WorkerMessageSkipEventSubscriber::class;
-        }
-
-        return $subscriberServiceIds;
     }
 }

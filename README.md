@@ -19,8 +19,7 @@ tools.
 ### Tracking Capabilities
 
 - UUIDv7 assignment when a message is queued.
-- Stable UUID reuse across queueing, receiving, handling, failures, retries,
-  and skips.
+- Stable UUID reuse across queueing, receiving, handling, failures, retries.
 - Structured log context with lifecycle fields, transport metadata, and
   normalized Messenger stamps.
 
@@ -55,7 +54,6 @@ ckrack_messenger_logging:
     handled: info
     failed: error
     retried: warning
-    skipped: warning
   stamp_normalizers: {}
 ```
 
@@ -101,16 +99,13 @@ sequenceDiagram
             Note over W,FT: next consume logs from_failed_transport = true
         end
     end
-    opt skipped from messenger:failed:retry (Messenger 7.4+)
-        Note over W: log "skipped"
-    end
 ```
 
 ### Logged Events
 
 Every worker subscriber back-fills a missing UUID before logging. Queueing,
 receiving, handling, failure, and retry events are available in Symfony `6.4`,
-`7.4`, and `8.0`; `WorkerMessageSkipEvent` requires Messenger `7.4+`.
+`7.4`, and `8.0`.
 
 - **`SendMessageToTransportsEvent`** -> `Messenger message queued.`
   Assigns the UUIDv7 stamp, or reuses an existing one. Level:
@@ -123,18 +118,12 @@ receiving, handling, failure, and retry events are available in Symfony `6.4`,
   `log_levels.failed`.
 - **`WorkerMessageRetriedEvent`** -> `Messenger message scheduled for retry.`
   Level: `log_levels.retried`.
-- **`WorkerMessageSkipEvent`** -> `Messenger message skipped.` Level:
-  `log_levels.skipped`. Registered only when the event class exists.
 
 Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
 `WorkerRunningEvent`, `WorkerRateLimitedEvent`) and
-`MessageSentToTransportsEvent` are intentionally not logged. This bundle tracks
-individual messages, not worker processes.
+`MessageSentToTransportsEvent` are intentionally not logged.
 
 ## Log Context
-
-`skipped` is only logged when `WorkerMessageSkipEvent` is available in the
-installed Messenger version.
 
 ```php
 // Log context - every event, built by MessengerLogContextBuilder::build().
@@ -150,7 +139,7 @@ array{
 
     // Event-specific fields.
     sender_names?: list<string>,               // queued only
-    receiver_name?: string,                    // received, handled, failed, retried, skipped
+    receiver_name?: string,                    // received, handled, failed, retried
     will_retry?: bool,                         // failed only
     exception_class?: class-string<Throwable>, // failed only
     exception_message?: string,                // failed only

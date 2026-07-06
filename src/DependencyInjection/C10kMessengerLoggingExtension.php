@@ -9,13 +9,11 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageFailedEventSubscrib
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageHandledEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
-use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageSkipEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\StampNormalizerInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
-use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
 
 final class C10kMessengerLoggingExtension extends Extension
 {
@@ -84,18 +82,12 @@ final class C10kMessengerLoggingExtension extends Extension
      */
     private static function subscriberServiceIds(): array
     {
-        $subscriberServiceIds = [
+        return [
             SendMessageToTransportsEventSubscriber::class,
             WorkerMessageReceivedEventSubscriber::class,
             WorkerMessageHandledEventSubscriber::class,
             WorkerMessageFailedEventSubscriber::class,
             WorkerMessageRetriedEventSubscriber::class,
         ];
-
-        if (class_exists(WorkerMessageSkipEvent::class)) {
-            $subscriberServiceIds[] = WorkerMessageSkipEventSubscriber::class;
-        }
-
-        return $subscriberServiceIds;
     }
 }

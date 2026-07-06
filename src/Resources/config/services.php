@@ -7,10 +7,8 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageFailedEventSubscrib
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageHandledEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
-use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageSkipEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
-use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
@@ -43,10 +41,4 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WorkerMessageRetriedEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
         ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.retried'));
-
-    if (class_exists(WorkerMessageSkipEvent::class)) {
-        $services->set(WorkerMessageSkipEventSubscriber::class)
-            ->arg('$logger', service('logger')->nullOnInvalid())
-            ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.skipped'));
-    }
 };
