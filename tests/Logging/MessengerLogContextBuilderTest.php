@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace C10k\MessengerLoggingBundle\Tests\Logging;
 
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
 use C10k\MessengerLoggingBundle\Logging\StampNormalizer\BusNameStampNormalizer;
 use C10k\MessengerLoggingBundle\Logging\StampNormalizer\HandledStampNormalizer;
 use C10k\MessengerLoggingBundle\Logging\StampNormalizer\RedeliveryStampNormalizer;
@@ -26,6 +27,7 @@ use Symfony\Component\Messenger\Stamp\TransportMessageIdStamp;
 use Symfony\Component\Uid\UuidV7;
 
 #[CoversClass(MessengerLogContextBuilder::class)]
+#[CoversClass(MessengerLogEvent::class)]
 final class MessengerLogContextBuilderTest extends TestCase
 {
     public function testItAddsUuidVersionSevenStampWhenMissing(): void
@@ -65,8 +67,11 @@ final class MessengerLogContextBuilderTest extends TestCase
                     new TransportMessageIdStamp(12345),
                 ],
             ),
+            MessengerLogEvent::Handled,
+            ['event' => 'overridden'],
         );
 
+        self::assertSame('handled', $context['event']);
         self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $context['uuid']);
         self::assertSame(DummyMessage::class, $context['message_class']);
         self::assertSame(2, $context['retry_count']);
@@ -115,6 +120,7 @@ final class MessengerLogContextBuilderTest extends TestCase
                     ),
                 ],
             ),
+            MessengerLogEvent::Queued,
         );
 
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
@@ -140,6 +146,7 @@ final class MessengerLogContextBuilderTest extends TestCase
                     ),
                 ],
             ),
+            MessengerLogEvent::Queued,
         );
 
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */

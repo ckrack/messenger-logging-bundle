@@ -129,6 +129,7 @@ Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
 ```php
 // Log context - every event, built by MessengerLogContextBuilder::build().
 array{
+    event: 'queued'|'received'|'handled'|'failed'|'retried',
     uuid: string|null,
     message_class: class-string,
     retry_count: int,
@@ -152,6 +153,7 @@ Example `failed` log context:
 
 ```json
 {
+  "event": "failed",
   "uuid": "018f4f8f-4a73-7d3a-98f0-47b9d6ffb601",
   "message_class": "App\\Message\\ChargeCustomer",
   "retry_count": 2,

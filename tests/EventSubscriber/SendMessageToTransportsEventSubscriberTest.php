@@ -72,6 +72,7 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
         $record = $this->lastRecord($handler);
 
         self::assertSame('Messenger message queued.', $record->message);
+        self::assertSame('queued', $record->context['event']);
         self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
         self::assertSame(['async'], $record->context['sender_names']);
     }

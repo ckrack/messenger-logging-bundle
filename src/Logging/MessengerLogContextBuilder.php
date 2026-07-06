@@ -71,7 +71,7 @@ final class MessengerLogContextBuilder
      *
      * @return array<string, mixed>
      */
-    public function build(Envelope $envelope, array $context = []): array
+    public function build(Envelope $envelope, MessengerLogEvent $event, array $context = []): array
     {
         $sentToFailureTransportStamp = $envelope->last(SentToFailureTransportStamp::class);
         $transportMessageIdStamp = $envelope->last(TransportMessageIdStamp::class);
@@ -88,6 +88,7 @@ final class MessengerLogContextBuilder
                 'stamps' => $this->normalizeStamps($envelope),
             ],
             $context,
+            ['event' => $event->value],
         );
     }
 

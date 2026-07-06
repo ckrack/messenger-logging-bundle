@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace C10k\MessengerLoggingBundle\EventSubscriber;
 
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -30,6 +31,7 @@ final class WorkerMessageFailedEventSubscriber implements EventSubscriberInterfa
             'Messenger message failed.',
             $this->contextBuilder->build(
                 $event->getEnvelope(),
+                MessengerLogEvent::Failed,
                 [
                     'receiver_name' => $event->getReceiverName(),
                     'will_retry' => $event->willRetry(),

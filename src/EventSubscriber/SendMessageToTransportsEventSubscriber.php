@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace C10k\MessengerLoggingBundle\EventSubscriber;
 
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -35,6 +36,7 @@ final class SendMessageToTransportsEventSubscriber implements EventSubscriberInt
             'Messenger message queued.',
             $this->contextBuilder->build(
                 $event->getEnvelope(),
+                MessengerLogEvent::Queued,
                 [
                     'sender_names' => array_keys($event->getSenders()),
                 ],

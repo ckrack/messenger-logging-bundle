@@ -42,6 +42,7 @@ final class WorkerMessageReceivedEventSubscriberTest extends TestCase
         $record = $this->lastRecord($handler);
 
         self::assertSame('Messenger message received.', $record->message);
+        self::assertSame('received', $record->context['event']);
         self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
         self::assertSame('failed', $record->context['receiver_name']);
         self::assertTrue($record->context['from_failed_transport']);

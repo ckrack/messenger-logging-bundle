@@ -13,6 +13,7 @@ use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageHandledEventSubscri
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageReceivedEventSubscriber;
 use C10k\MessengerLoggingBundle\EventSubscriber\WorkerMessageRetriedEventSubscriber;
 use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
+use C10k\MessengerLoggingBundle\Logging\MessengerLogEvent;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\ConfiguredBusNameStampNormalizer;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStamp;
 use C10k\MessengerLoggingBundle\Tests\Fixtures\CustomStampNormalizer;
@@ -134,6 +135,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
                 new DummyMessage('message-1'),
                 [new CustomStamp('safe', ['token' => 'secret'])],
             ),
+            MessengerLogEvent::Queued,
         );
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
         $stamps = $context['stamps'];
@@ -173,6 +175,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
                 new DummyMessage('message-1'),
                 [new BusNameStamp('command.bus')],
             ),
+            MessengerLogEvent::Queued,
         );
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
         $stamps = $context['stamps'];

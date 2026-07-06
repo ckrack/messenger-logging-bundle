@@ -46,6 +46,7 @@ final class WorkerMessageFailedEventSubscriberTest extends TestCase
         $record = $this->lastRecord($handler);
 
         self::assertSame('Messenger message failed.', $record->message);
+        self::assertSame('failed', $record->context['event']);
         self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
         self::assertSame('async', $record->context['receiver_name']);
         self::assertSame(1, $record->context['retry_count']);
