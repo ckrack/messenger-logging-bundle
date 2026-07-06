@@ -18,38 +18,11 @@ tools.
 
 ### Tracking Capabilities
 
-- A UUIDv7 is assigned when a message is queued.
-- The same UUID is reused across queueing, receiving, handling, failures,
-  retries, and skips.
-- Each log entry includes key tracking fields such as `message_class`,
-  `retry_count`, receiver/transport names, and failure-transport metadata.
-- Each log entry includes a normalized `stamps` array for additional envelope
-  context.
-
-### Supported Lifecycle Events
-
-The bundle logs queueing, receiving, handled, failed, and retried events. If
-the installed Messenger version supports `WorkerMessageSkipEvent`, skipped
-messages are logged as well.
-
-Symfony Messenger dispatches the following events in the supported versions of
-this bundle (`6.4`, `7.4`, `8.0`). The table also maps what this bundle does
-for each event.
-
-| Symfony Messenger event | Meaning | Availability in supported Symfony versions | Our usage in this bundle |
-| --- | --- | --- | --- |
-| `SendMessageToTransportsEvent` | Dispatched before a message is sent to one or more transports. | `6.4`, `7.4`, `8.0` | Yes: `SendMessageToTransportsEventSubscriber` adds/reuses UUID, logs `Messenger message queued.`, includes `sender_names` (`log_levels.queued`). |
-| `MessageSentToTransportsEvent` | Dispatched after a message has been sent to at least one transport (once even if multiple transports are used). | `7.4`, `8.0` | No: not used currently. |
-| `WorkerMessageReceivedEvent` | Dispatched when a worker receives a message from a transport, before handling. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageReceivedEventSubscriber` ensures UUID and logs `Messenger message received.` with `receiver_name` (`log_levels.received`). |
-| `WorkerMessageHandledEvent` | Dispatched after a worker successfully handles a message. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageHandledEventSubscriber` ensures UUID and logs `Messenger message handled.` with `receiver_name` (`log_levels.handled`). |
-| `WorkerMessageFailedEvent` | Dispatched when message handling fails. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageFailedEventSubscriber` ensures UUID and logs `Messenger message failed.` with `receiver_name`, `will_retry`, and exception fields (`log_levels.failed`). |
-| `WorkerMessageRetriedEvent` | Dispatched when a failed message is scheduled to be retried. | `6.4`, `7.4`, `8.0` | Yes: `WorkerMessageRetriedEventSubscriber` ensures UUID and logs `Messenger message scheduled for retry.` with `receiver_name` (`log_levels.retried`). |
-| `WorkerRateLimitedEvent` | Dispatched when the worker is rate-limited and must wait before consuming. | `6.4`, `7.4`, `8.0` | No: not used currently. |
-| `WorkerRunningEvent` | Dispatched after each worker loop iteration (message processed or idle). | `6.4`, `7.4`, `8.0` | No: not used currently. |
-| `WorkerStartedEvent` | Dispatched when a worker starts running. | `6.4`, `7.4`, `8.0` | No: not used currently. |
-| `WorkerStoppedEvent` | Dispatched when a worker stops. | `6.4`, `7.4`, `8.0` | No: not used currently. |
-| `WorkerMessageSkipEvent` | Dispatched when a failed message is explicitly skipped in `messenger:failed:retry`. | `7.4`, `8.0` | Yes: `WorkerMessageSkipEventSubscriber` is conditionally registered (`class_exists`) and logs `Messenger message skipped.` with `receiver_name` (`log_levels.skipped`). |
-
+- UUIDv7 assignment when a message is queued.
+- Stable UUID reuse across queueing, receiving, handling, failures, retries,
+  and skips.
+- Structured log context with lifecycle fields, transport metadata, and
+  normalized Messenger stamps.
 
 ## Installation
 
@@ -89,7 +62,8 @@ ckrack_messenger_logging:
 ### Log Levels
 
 All PSR-3 log levels are supported. If failure logs are too noisy in a
-retry-heavy environment, you can set `failed: info`.
+retry-heavy environment, you can set `failed: info`. The `log_levels.*` keys
+match the event names listed in [Logged Events](#logged-events).
 
 ### Dedicated Log Channel
 
@@ -97,6 +71,121 @@ If `log_channel` is set, only the logs emitted by this bundle are sent to that
 Monolog channel. Other project logs remain unaffected unless they are
 explicitly configured to use the same channel. Without `log_channel`, the
 default logger behavior remains unchanged.
+
+## Tracked Lifecycle
+
+### Lifecycle Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Bus as Message bus
+    participant T as Transport
+    participant W as Worker
+    participant FT as Failure transport
+
+    Bus->>T: dispatch
+    Note over Bus,T: log "queued" - UUIDv7 stamp added here
+    T->>W: consume
+    Note over W: log "received"
+    alt handled successfully
+        Note over W: log "handled"
+    else handler throws
+        Note over W: log "failed" (will_retry, exception_*)
+        opt will_retry = true
+            W->>T: redeliver
+            Note over W,T: log "retried" - then consumed again (same uuid)
+        end
+        opt retries exhausted
+            W->>FT: forward
+            Note over W,FT: next consume logs from_failed_transport = true
+        end
+    end
+    opt skipped from messenger:failed:retry (Messenger 7.4+)
+        Note over W: log "skipped"
+    end
+```
+
+### Logged Events
+
+Every worker subscriber back-fills a missing UUID before logging. Queueing,
+receiving, handling, failure, and retry events are available in Symfony `6.4`,
+`7.4`, and `8.0`; `WorkerMessageSkipEvent` requires Messenger `7.4+`.
+
+- **`SendMessageToTransportsEvent`** -> `Messenger message queued.`
+  Assigns the UUIDv7 stamp, or reuses an existing one. Level:
+  `log_levels.queued`.
+- **`WorkerMessageReceivedEvent`** -> `Messenger message received.` Level:
+  `log_levels.received`.
+- **`WorkerMessageHandledEvent`** -> `Messenger message handled.` Level:
+  `log_levels.handled`.
+- **`WorkerMessageFailedEvent`** -> `Messenger message failed.` Level:
+  `log_levels.failed`.
+- **`WorkerMessageRetriedEvent`** -> `Messenger message scheduled for retry.`
+  Level: `log_levels.retried`.
+- **`WorkerMessageSkipEvent`** -> `Messenger message skipped.` Level:
+  `log_levels.skipped`. Registered only when the event class exists.
+
+Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
+`WorkerRunningEvent`, `WorkerRateLimitedEvent`) and
+`MessageSentToTransportsEvent` are intentionally not logged. This bundle tracks
+individual messages, not worker processes.
+
+## Log Context
+
+`skipped` is only logged when `WorkerMessageSkipEvent` is available in the
+installed Messenger version.
+
+```php
+// Log context - every event, built by MessengerLogContextBuilder::build().
+array{
+    uuid: string|null,
+    message_class: class-string,
+    retry_count: int,
+    received_transport_names: list<string>,
+    from_failed_transport: bool,
+    failed_transport_original_receiver_name: string|null,
+    transport_message_id: mixed|null,
+    stamps: list<array{class: class-string, context: array<string, mixed>}>,
+
+    // Event-specific fields.
+    sender_names?: list<string>,               // queued only
+    receiver_name?: string,                    // received, handled, failed, retried, skipped
+    will_retry?: bool,                         // failed only
+    exception_class?: class-string<Throwable>, // failed only
+    exception_message?: string,                // failed only
+    exception_code?: int,                      // failed only
+}
+```
+
+Example `failed` log context:
+
+```json
+{
+  "uuid": "018f4f8f-4a73-7d3a-98f0-47b9d6ffb601",
+  "message_class": "App\\Message\\ChargeCustomer",
+  "retry_count": 2,
+  "received_transport_names": ["async"],
+  "from_failed_transport": false,
+  "failed_transport_original_receiver_name": null,
+  "transport_message_id": "01HXK4Y3W9Q8V7N6M5P4R3T2S1",
+  "stamps": [
+    {
+      "class": "Symfony\\Component\\Messenger\\Stamp\\BusNameStamp",
+      "context": {"bus_name": "messenger.bus.default"}
+    },
+    {
+      "class": "Symfony\\Component\\Messenger\\Stamp\\RedeliveryStamp",
+      "context": {"retry_count": 2}
+    }
+  ],
+  "receiver_name": "async",
+  "will_retry": true,
+  "exception_class": "RuntimeException",
+  "exception_message": "Payment provider timed out.",
+  "exception_code": 0
+}
+```
 
 ## Stamp Normalization
 
@@ -129,44 +218,6 @@ ckrack_messenger_logging:
   stamp_normalizers:
     App\Messenger\CustomStamp: App\Messenger\Logging\CustomStampNormalizer
 ```
-
-## Tracked Lifecycle
-
-### Lifecycle Flow
-
-```mermaid
-flowchart LR
-    queued["queued"] --> received["received"]
-    queued -.-> uuidNote["uuid stamp set here via withUuid() as MessageUuidStamp (UUIDv7)"]
-    received --> handled["handled"]
-    received --> failed["failed"]
-    failed -->|"will_retry = true"| retried["scheduled for retry"]
-    retried --> received
-    received --> skipped["skipped (optional)"]
-    failed -->|"will_retry = false"| failureTransport["failure transport (optional)"]
-```
-
-### Field Presence By Log Event
-
-`skipped` is only logged when `WorkerMessageSkipEvent` is available in the
-installed Messenger version.
-
-| field | queued | received | handled | failed | retried | skipped |
-| --- | --- | --- | --- | --- | --- | --- |
-| `uuid (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `message_class (class-string)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `retry_count (int)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `received_transport_names (list<string>)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `from_failed_transport (bool)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `failed_transport_original_receiver_name (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `transport_message_id (string/null)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `stamps (list<array{class: class-string, context: array<string, mixed>}>)` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `sender_names (list<string>)` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `receiver_name (string)` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `will_retry (bool)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `exception_class (class-string<Throwable>)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `exception_message (string)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `exception_code (int)` | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 ## Local development
 
