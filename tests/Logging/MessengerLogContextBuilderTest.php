@@ -62,7 +62,7 @@ final class MessengerLogContextBuilderTest extends TestCase
                         ['result' => 'this should never be logged by default'],
                         'App\\MessageHandler\\DummyHandler',
                     ),
-                    new TransportMessageIdStamp('transport-id-1'),
+                    new TransportMessageIdStamp(12345),
                 ],
             ),
         );
@@ -73,7 +73,7 @@ final class MessengerLogContextBuilderTest extends TestCase
         self::assertSame(['failed'], $context['received_transport_names']);
         self::assertTrue($context['from_failed_transport']);
         self::assertSame('async', $context['failed_transport_original_receiver_name']);
-        self::assertSame('transport-id-1', $context['transport_message_id']);
+        self::assertSame('12345', $context['transport_message_id']);
         /** @var list<array{class: string, context: array<string, mixed>}> $stamps */
         $stamps = $context['stamps'];
 

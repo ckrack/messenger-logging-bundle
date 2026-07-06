@@ -37,7 +37,7 @@ final class WorkerMessageFailedEventSubscriberTest extends TestCase
                 ],
             ),
             'async',
-            new \RuntimeException('boom'),
+            new \RuntimeException('boom', 123),
         );
         $event->setForRetry();
 
@@ -52,6 +52,7 @@ final class WorkerMessageFailedEventSubscriberTest extends TestCase
         self::assertTrue($record->context['will_retry']);
         self::assertSame(\RuntimeException::class, $record->context['exception_class']);
         self::assertSame('boom', $record->context['exception_message']);
+        self::assertSame('123', $record->context['exception_code']);
     }
 
     public function testItUsesConfiguredLogLevelForFailures(): void

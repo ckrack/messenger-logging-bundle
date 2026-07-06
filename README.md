@@ -135,7 +135,7 @@ array{
     received_transport_names: list<string>,
     from_failed_transport: bool,
     failed_transport_original_receiver_name: string|null,
-    transport_message_id: mixed|null,
+    transport_message_id: string|null,
     stamps: list<array{class: class-string, context: array<string, mixed>}>,
 
     // Event-specific fields.
@@ -144,7 +144,7 @@ array{
     will_retry?: bool,                         // failed only
     exception_class?: class-string<Throwable>, // failed only
     exception_message?: string,                // failed only
-    exception_code?: int,                      // failed only
+    exception_code?: string,                   // failed only
 }
 ```
 
@@ -173,7 +173,7 @@ Example `failed` log context:
   "will_retry": true,
   "exception_class": "RuntimeException",
   "exception_message": "Payment provider timed out.",
-  "exception_code": 0
+  "exception_code": "0"
 }
 ```
 

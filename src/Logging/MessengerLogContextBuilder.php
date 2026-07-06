@@ -84,7 +84,7 @@ final class MessengerLogContextBuilder
                 'received_transport_names' => $this->receivedTransportNames($envelope),
                 'from_failed_transport' => $sentToFailureTransportStamp !== null,
                 'failed_transport_original_receiver_name' => $sentToFailureTransportStamp?->getOriginalReceiverName(),
-                'transport_message_id' => $transportMessageIdStamp?->getId(),
+                'transport_message_id' => $this->transportMessageId($transportMessageIdStamp),
                 'stamps' => $this->normalizeStamps($envelope),
             ],
             $context,
@@ -94,6 +94,25 @@ final class MessengerLogContextBuilder
     private function uuid(Envelope $envelope): string|null
     {
         return $envelope->last(MessageUuidStamp::class)?->getUuid();
+    }
+
+    private function transportMessageId(TransportMessageIdStamp|null $stamp): string|null
+    {
+        if ($stamp === null) {
+            return null;
+        }
+
+        $id = $stamp->getId();
+
+        if ($id === null) {
+            return null;
+        }
+
+        if (is_scalar($id) || $id instanceof Stringable) {
+            return (string) $id;
+        }
+
+        return get_debug_type($id);
     }
 
     /**
@@ -237,7 +256,7 @@ final class MessengerLogContextBuilder
             return [
                 'class' => $value::class,
                 'message' => $value->getMessage(),
-                'code' => $value->getCode(),
+                'code' => (string) $value->getCode(),
             ];
         }
 

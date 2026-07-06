@@ -35,7 +35,7 @@ final class WorkerMessageFailedEventSubscriber implements EventSubscriberInterfa
                     'will_retry' => $event->willRetry(),
                     'exception_class' => $throwable::class,
                     'exception_message' => $throwable->getMessage(),
-                    'exception_code' => $throwable->getCode(),
+                    'exception_code' => (string) $throwable->getCode(),
                 ],
             ),
         );
