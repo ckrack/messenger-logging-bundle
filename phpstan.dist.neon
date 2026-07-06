@@ -4,7 +4,7 @@ parameters:
         - src/
         - tests/
     ignoreErrors:
-        # Symfony 6.4 TreeBuilder fluent API lacks precise return types for PHPStan
+        # Symfony TreeBuilder fluent API lacks precise return types for PHPStan
         -
             message: '#Cannot call method \w+\(\) on mixed#'
             path: src/DependencyInjection/Configuration.php

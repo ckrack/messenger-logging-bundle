@@ -14,6 +14,7 @@ use Psr\Log\LogLevel;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Event\MessageSentToTransportsEvent;
 use Symfony\Component\Messenger\Event\SendMessageToTransportsEvent;
 use Symfony\Component\Messenger\Transport\Sender\SenderInterface;
 use Symfony\Component\Uid\UuidV7;
@@ -23,7 +24,7 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
 {
     use MonologTestLoggerTrait;
 
-    public function testItAssignsAUuidStampAndLogsQueueing(): void
+    public function testItAssignsAUuidStampBeforeSending(): void
     {
         [$logger, $handler] = $this->createTestLogger();
         $subscriber = new SendMessageToTransportsEventSubscriber(new MessengerLogContextBuilder(), $logger);
@@ -37,18 +38,41 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
             }],
         );
 
-        $subscriber->onQueued($event);
+        $subscriber->onSend($event);
 
         $uuidStamp = $event->getEnvelope()->last(MessageUuidStamp::class);
-        $record = $this->lastRecord($handler);
 
         self::assertInstanceOf(MessageUuidStamp::class, $uuidStamp);
         self::assertSame(
             $uuidStamp->getUuid(),
             UuidV7::fromString($uuidStamp->getUuid())->toRfc4122(),
         );
+        self::assertFalse($handler->hasRecords(Level::Info));
+    }
+
+    public function testItLogsQueueingAfterSending(): void
+    {
+        [$logger, $handler] = $this->createTestLogger();
+        $subscriber = new SendMessageToTransportsEventSubscriber(new MessengerLogContextBuilder(), $logger);
+        $event = new MessageSentToTransportsEvent(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [new MessageUuidStamp('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc')],
+            ),
+            ['async' => new class () implements SenderInterface {
+                public function send(Envelope $envelope): Envelope
+                {
+                    return $envelope;
+                }
+            }],
+        );
+
+        $subscriber->onSent($event);
+
+        $record = $this->lastRecord($handler);
+
         self::assertSame('Messenger message queued.', $record->message);
-        self::assertSame($uuidStamp->getUuid(), $record->context['uuid']);
+        self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
         self::assertSame(['async'], $record->context['sender_names']);
     }
 
@@ -60,8 +84,11 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
             $logger,
             LogLevel::DEBUG,
         );
-        $event = new SendMessageToTransportsEvent(
-            new Envelope(new DummyMessage('message-1')),
+        $event = new MessageSentToTransportsEvent(
+            new Envelope(
+                new DummyMessage('message-1'),
+                [new MessageUuidStamp('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc')],
+            ),
             ['async' => new class () implements SenderInterface {
                 public function send(Envelope $envelope): Envelope
                 {
@@ -70,7 +97,7 @@ final class SendMessageToTransportsEventSubscriberTest extends TestCase
             }],
         );
 
-        $subscriber->onQueued($event);
+        $subscriber->onSent($event);
 
         self::assertSame(Level::Debug, $this->lastRecord($handler)->level);
     }

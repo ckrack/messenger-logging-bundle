@@ -8,6 +8,7 @@ use C10k\MessengerLoggingBundle\Logging\MessengerLogContextBuilder;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\Event\MessageSentToTransportsEvent;
 use Symfony\Component\Messenger\Event\SendMessageToTransportsEvent;
 
 use function array_keys;
@@ -21,16 +22,19 @@ final class SendMessageToTransportsEventSubscriber implements EventSubscriberInt
     ) {
     }
 
-    public function onQueued(SendMessageToTransportsEvent $event): void
+    public function onSend(SendMessageToTransportsEvent $event): void
     {
         $envelope = $this->contextBuilder->withUuid($event->getEnvelope());
         $event->setEnvelope($envelope);
+    }
 
+    public function onSent(MessageSentToTransportsEvent $event): void
+    {
         $this->logger?->log(
             $this->logLevel,
             'Messenger message queued.',
             $this->contextBuilder->build(
-                $envelope,
+                $event->getEnvelope(),
                 [
                     'sender_names' => array_keys($event->getSenders()),
                 ],
@@ -41,7 +45,8 @@ final class SendMessageToTransportsEventSubscriber implements EventSubscriberInt
     public static function getSubscribedEvents(): array
     {
         return [
-            SendMessageToTransportsEvent::class => 'onQueued',
+            SendMessageToTransportsEvent::class => 'onSend',
+            MessageSentToTransportsEvent::class => 'onSent',
         ];
     }
 }

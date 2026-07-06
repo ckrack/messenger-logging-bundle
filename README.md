@@ -38,7 +38,7 @@ If you are not using Symfony Flex, register the bundle manually in
 
 ### Supported Versions
 
-The bundle targets Symfony `6.4`, `7.4`, and `8.0`.
+The bundle targets Symfony `7.4` and `8.0`.
 
 ## Configuration
 
@@ -83,7 +83,8 @@ sequenceDiagram
     participant FT as Failure transport
 
     Bus->>T: dispatch
-    Note over Bus,T: log "queued" - UUIDv7 stamp added here
+    Note over Bus,T: UUIDv7 stamp added before send
+    Note over Bus,T: log "queued" after send
     T->>W: consume
     Note over W: log "received"
     alt handled successfully
@@ -104,11 +105,12 @@ sequenceDiagram
 ### Logged Events
 
 Every worker subscriber back-fills a missing UUID before logging. Queueing,
-receiving, handling, failure, and retry events are available in Symfony `6.4`,
-`7.4`, and `8.0`.
+receiving, handling, failure, and retry events are available in Symfony `7.4`
+and `8.0`.
 
-- **`SendMessageToTransportsEvent`** -> `Messenger message queued.`
-  Assigns the UUIDv7 stamp, or reuses an existing one. Level:
+- **`SendMessageToTransportsEvent`** assigns the UUIDv7 stamp before sending,
+  or reuses an existing one.
+- **`MessageSentToTransportsEvent`** -> `Messenger message queued.` Level:
   `log_levels.queued`.
 - **`WorkerMessageReceivedEvent`** -> `Messenger message received.` Level:
   `log_levels.received`.
@@ -120,8 +122,7 @@ receiving, handling, failure, and retry events are available in Symfony `6.4`,
   Level: `log_levels.retried`.
 
 Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
-`WorkerRunningEvent`, `WorkerRateLimitedEvent`) and
-`MessageSentToTransportsEvent` are intentionally not logged.
+`WorkerRunningEvent`, `WorkerRateLimitedEvent`) are intentionally not logged.
 
 ## Log Context
 
