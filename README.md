@@ -55,7 +55,7 @@ ckrack_messenger_logging:
     received: info
     handled: info
     failed: error
-    retried: warning
+    retry_scheduled: warning
   stamp_normalizers: {}
 ```
 
@@ -95,7 +95,7 @@ sequenceDiagram
         Note over W: log "failed" (will_retry, exception_*)
         opt will_retry = true
             W->>T: redeliver
-            Note over W,T: log "retried" - then consumed again (same uuid)
+            Note over W,T: log "retry_scheduled" - then consumed again (same uuid)
         end
         opt retries exhausted
             W->>FT: forward
@@ -120,8 +120,8 @@ and `8.0`.
   `log_levels.handled`.
 - **`WorkerMessageFailedEvent`** -> `Messenger message failed.` Level:
   `log_levels.failed`.
-- **`WorkerMessageRetriedEvent`** -> `Messenger message scheduled for retry.`
-  Level: `log_levels.retried`.
+- **`WorkerMessageRetriedEvent`** -> `Messenger message retry scheduled.`
+  Level: `log_levels.retry_scheduled`.
 
 Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
 `WorkerRunningEvent`, `WorkerRateLimitedEvent`) are intentionally not logged.
@@ -131,7 +131,7 @@ Worker-level events (`WorkerStartedEvent`, `WorkerStoppedEvent`,
 ```php
 // Log context - every event, built by MessengerLogContextBuilder::build().
 array{
-    event: 'queued'|'received'|'handled'|'failed'|'retried',
+    event: 'queued'|'received'|'handled'|'failed'|'retry_scheduled',
     uuid: string|null,
     message_class: class-string,
     retry_count: int,
@@ -143,7 +143,7 @@ array{
 
     // Event-specific fields.
     sender_names?: list<string>,               // queued only
-    receiver_name?: string,                    // received, handled, failed, retried
+    receiver_name?: string,                    // received, handled, failed, retry_scheduled
     time_in_queue_ms?: int|null,               // received only
     handling_duration_ms?: int|null,           // handled, failed
     will_retry?: bool,                         // failed only

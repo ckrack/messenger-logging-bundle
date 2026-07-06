@@ -26,7 +26,7 @@ final class WorkerMessageRetriedEventSubscriber implements EventSubscriberInterf
 
         $this->logger?->log(
             $this->logLevel,
-            'Messenger message scheduled for retry.',
+            'Messenger message retry scheduled.',
             $this->contextBuilder->build(
                 $event->getEnvelope(),
                 MessengerLogEvent::Retried,

@@ -50,6 +50,7 @@ final class C10kMessengerLoggingExtensionTest extends TestCase
         self::assertTrue($container->hasDefinition(WorkerMessageRetriedEventSubscriber::class));
         self::assertSame('info', $container->getParameter('ckrack_messenger_logging.log_levels.queued'));
         self::assertSame('error', $container->getParameter('ckrack_messenger_logging.log_levels.failed'));
+        self::assertSame('warning', $container->getParameter('ckrack_messenger_logging.log_levels.retry_scheduled'));
         self::assertSame([], $container->getDefinition(SendMessageToTransportsEventSubscriber::class)->getTag('monolog.logger'));
     }
 

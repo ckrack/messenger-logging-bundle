@@ -51,5 +51,5 @@ return static function (ContainerConfigurator $container): void {
         ->arg('$processingDurationTracker', service(ProcessingDurationTracker::class));
     $services->set(WorkerMessageRetriedEventSubscriber::class)
         ->arg('$logger', service('logger')->nullOnInvalid())
-        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.retried'));
+        ->arg('$logLevel', param('ckrack_messenger_logging.log_levels.retry_scheduled'));
 };

@@ -22,7 +22,7 @@ final class WorkerMessageRetriedEventSubscriberTest extends TestCase
 {
     use MonologTestLoggerTrait;
 
-    public function testItLogsRetriedMessages(): void
+    public function testItLogsRetryScheduledMessages(): void
     {
         [$logger, $handler] = $this->createTestLogger();
         $subscriber = new WorkerMessageRetriedEventSubscriber(
@@ -46,8 +46,8 @@ final class WorkerMessageRetriedEventSubscriberTest extends TestCase
 
         $record = $this->lastRecord($handler);
 
-        self::assertSame('Messenger message scheduled for retry.', $record->message);
-        self::assertSame('retried', $record->context['event']);
+        self::assertSame('Messenger message retry scheduled.', $record->message);
+        self::assertSame('retry_scheduled', $record->context['event']);
         self::assertSame('018f0c0c-6f9e-7eec-bfc3-6f8d3426f5dc', $record->context['uuid']);
         self::assertSame(2, $record->context['retry_count']);
         self::assertSame('async', $record->context['receiver_name']);

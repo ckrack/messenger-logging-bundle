@@ -29,5 +29,5 @@ enum MessengerLogEvent: string
     /**
      * @see \Symfony\Component\Messenger\Event\WorkerMessageRetriedEvent vendor/symfony/messenger/Event/WorkerMessageRetriedEvent.php
      */
-    case Retried = 'retried';
+    case Retried = 'retry_scheduled';
 }

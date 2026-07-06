@@ -61,7 +61,7 @@ final class Configuration implements ConfigurationInterface
                             ->values(self::LOG_LEVELS)
                             ->defaultValue(LogLevel::ERROR)
                         ->end()
-                        ->enumNode('retried')
+                        ->enumNode('retry_scheduled')
                             ->values(self::LOG_LEVELS)
                             ->defaultValue(LogLevel::WARNING)
                         ->end()
