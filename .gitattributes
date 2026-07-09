@@ -1,11 +1,22 @@
+# This file was partly modified by the lean package validator (http://git.io/lean-package-validator).
+
 # Exclude development and test files from export archives.
-/.github/ export-ignore
-/tests/ export-ignore
+.commitsar.yaml export-ignore
 .editorconfig export-ignore
-.pre-commit-config.yaml export-ignore
+.gitattributes export-ignore
+.github/ export-ignore
+.gitignore export-ignore
+.idea/ export-ignore
+.lpv export-ignore
 .php-cs-fixer.dist.php export-ignore
+.pre-commit-config.yaml export-ignore
+AGENTS.md export-ignore
 docker-compose.yml export-ignore
+docs/ export-ignore
+LICENSE export-ignore
 Makefile export-ignore
 Makefile.setup export-ignore
 phpstan.dist.neon export-ignore
 phpunit.xml export-ignore
+README.md export-ignore
+tests/ export-ignore
